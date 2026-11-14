@@ -1,0 +1,123 @@
+const { asyncHandler } = require("../../middlewares/asyncHandler");
+const {
+  generateOTP,
+  isValidEmail,
+  isValidPhone,
+  normalizePhone,
+  hashToken,
+} = require("../../helpers/auth/authUtils");
+const { mailSender } = require("../../helpers/email/mailService");
+const authSchema = require("../../models/authSchema");
+
+const signup = asyncHandler(async (req, res) => {
+  const { name, email, phone, password } = req.body;
+
+  if (!name || name.trim().length < 3 || name.trim().length > 25) {
+    return res.status(400).json({
+      success: false,
+      message: "Name must be between 3 and 25 characters",
+    });
+  }
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: "Email is required",
+    });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide a valid email address",
+    });
+  }
+
+  if (!phone || !isValidPhone(phone)) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide a valid Bangladesh mobile number (013-019XXXXXXXX or +8801XXXXXXXXX)",
+    });
+  }
+
+  if (!password || typeof password !== "string" || password.length < 6) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must be at least 6 characters",
+    });
+  }
+
+  const normalizedPhone = normalizePhone(phone);
+  const localPhone = normalizedPhone.replace(/^\+88/, "");
+
+  // Check for existing user by email or phone
+  const existingUser = await authSchema.findOne({
+    $or: [
+      { email: email.trim().toLowerCase() },
+      { phone: { $in: [phone.trim(), normalizedPhone, localPhone] } },
+    ],
+  });
+
+  const otp = generateOTP();
+  let user;
+
+  if (existingUser) {
+    // If the account is already verified, prevent duplicate registration
+    if (existingUser.isVerified) {
+      const isDuplicateEmail = existingUser.email === email.trim().toLowerCase();
+      return res.status(409).json({
+        success: false,
+        message: isDuplicateEmail
+          ? "User with this email already exists"
+          : "User with this phone number already exists",
+      });
+    }
+
+    // If the account was previously registered but never verified, refresh it and resend OTP
+    existingUser.name = name.trim();
+    existingUser.email = email.trim().toLowerCase();
+    existingUser.phone = normalizedPhone;
+    existingUser.password = password;
+    existingUser.otp = hashToken(otp);
+    existingUser.otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
+    await existingUser.save();
+    user = existingUser;
+  } else {
+    // Brand new user registration
+    user = await authSchema.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: normalizedPhone,
+      password,
+      otp: hashToken(otp),
+      otpExpiry: new Date(Date.now() + 5 * 60 * 1000),
+    });
+  }
+
+  try {
+    await mailSender({
+      email: user.email,
+      subject: "Rent Nest - Email Verification OTP",
+      otp,
+    });
+  } catch (mailError) {
+    console.error("Signup OTP email failed:", mailError.message);
+    return res.status(502).json({
+      success: false,
+      message: "Account created, but the verification email could not be sent. Please request a new code.",
+      userId: user._id,
+      devOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
+    });
+  }
+
+  return res.status(201).json({
+    success: true,
+    message: "Account created. Your verification code is on its way to your email.",
+    userId: user._id,
+    devOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
+  });
+});
+
+module.exports = {
+  signup,
+};

@@ -1,0 +1,36 @@
+const noticeSchema = require("../../models/noticeSchema");
+const { asyncHandler } = require("../../middlewares/asyncHandler");
+
+const createNotice = asyncHandler(async (req, res) => {
+  const { title, description } = req.body || {};
+
+  if (typeof title !== "string" || !title.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Title is required",
+    });
+  }
+
+  if (typeof description !== "string" || !description.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Description is required",
+    });
+  }
+
+  const notice = await noticeSchema.create({
+    title,
+    description,
+    createdBy: req.user._id,
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: "Notice created successfully",
+    notice,
+  });
+});
+
+module.exports = {
+  createNotice,
+};

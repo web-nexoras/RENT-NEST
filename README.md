@@ -96,16 +96,16 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [https://rent-nest-seven-ecru.vercel.app/signin].
 
 ## Useful URLs
 
 | Purpose | URL |
 | --- | --- |
-| Frontend | http://localhost:3000 |
-| API health | http://localhost:5000/health |
-| Swagger UI | http://localhost:5000/api-docs |
-| OpenAPI JSON | http://localhost:5000/api-docs.json |
+| Live Backend | https://rent-nest-auth.onrender.com |
+| Live API Health | https://rent-nest-auth.onrender.com/health |
+| Live Swagger UI | https://rent-nest-auth.onrender.com/api-docs |
+| Local Swagger UI | http://localhost:8000/api-docs |
 
 The health endpoint returns HTTP 503 until MongoDB is connected.
 

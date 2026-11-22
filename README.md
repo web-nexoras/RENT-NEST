@@ -105,7 +105,6 @@ Open [https://rent-nest-seven-ecru.vercel.app/signin].
 | Live Backend | https://rent-nest-auth.onrender.com |
 | Live API Health | https://rent-nest-auth.onrender.com/health |
 | Live Swagger UI | https://rent-nest-auth.onrender.com/api-docs |
-| Local Swagger UI | http://localhost:8000/api-docs |
 
 The health endpoint returns HTTP 503 until MongoDB is connected.
 
